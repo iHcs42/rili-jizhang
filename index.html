@@ -48,6 +48,13 @@
   .brand-cn{font-size:10.5px;letter-spacing:3.5px;color:var(--muted);margin-top:5px}
   .ghost-btn{border:1px solid var(--line);background:rgba(255,253,249,.7);color:var(--ink-soft);font-size:11.5px;letter-spacing:1px;padding:9px 14px;border-radius:12px;cursor:pointer;transition:.18s;backdrop-filter:blur(6px)}
   .ghost-btn:hover{border-color:#E2CFC8;color:var(--ink)}
+  .top-actions{display:flex;gap:8px}
+  .data-block{margin-top:16px}
+  .data-lab{font-size:10.5px;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px}
+  .data-ta{width:100%;height:88px;resize:none;border:1px solid var(--line);border-radius:12px;background:#FCF8F1;padding:10px 12px;font-size:10px;line-height:1.6;color:var(--ink-soft);font-family:ui-monospace,Menlo,monospace;outline:none}
+  .data-ta:focus{border-color:#E2CFC8}
+  .data-btns{display:flex;gap:8px;margin-top:10px}
+  .data-btns .ghost-btn{flex:1}
 
   /* ---------- 布局 ---------- */
   .layout{display:grid;grid-template-columns:minmax(0,1fr) 348px;gap:18px;margin-top:20px;align-items:start}
@@ -293,7 +300,10 @@
         <div class="brand-cn">日历记账本</div>
       </div>
     </div>
-    <button class="ghost-btn" id="todayBtn">回到今天</button>
+    <div class="top-actions">
+      <button class="ghost-btn" id="dataBtn">数据</button>
+      <button class="ghost-btn" id="todayBtn">回到今天</button>
+    </div>
   </header>
 
   <div class="layout">
@@ -497,6 +507,33 @@
   </div>
 </div>
 
+<div class="overlay" id="dataOverlay" aria-hidden="true">
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="数据备份">
+    <div class="sheet-head">
+      <div>
+        <h2>数据备份</h2>
+        <div class="sub">把数据从一台设备搬到另一台</div>
+      </div>
+      <button class="close" id="closeData" aria-label="关闭">×</button>
+    </div>
+
+    <div class="data-block">
+      <div class="data-lab">导出 · 把这台设备的数据带走</div>
+      <textarea class="data-ta" id="exportBox" readonly placeholder="点下方「生成导出文本」"></textarea>
+      <div class="data-btns">
+        <button class="ghost-btn" id="exportGen">生成导出文本</button>
+        <button class="ghost-btn" id="exportCopy">复制</button>
+      </div>
+    </div>
+
+    <div class="data-block">
+      <div class="data-lab">导入 · 粘贴另一台设备导出的文本</div>
+      <textarea class="data-ta" id="importBox" placeholder="长按粘贴到这里"></textarea>
+      <button class="btn-primary" id="importBtn">导入并覆盖本机数据</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -655,6 +692,9 @@
     budgetSave: $('budgetSave'), closeBudget: $('closeBudget'), presetBtn: $('presetBtn'),
     accountOverlay: $('accountOverlay'), wechatInput: $('wechatInput'), cardInput: $('cardInput'),
     accountSave: $('accountSave'), closeAccount: $('closeAccount'),
+    dataBtn: $('dataBtn'), dataOverlay: $('dataOverlay'), closeData: $('closeData'),
+    exportBox: $('exportBox'), exportGen: $('exportGen'), exportCopy: $('exportCopy'),
+    importBox: $('importBox'), importBtn: $('importBtn'),
     toast: $('toast')
   };
 
@@ -1172,6 +1212,58 @@
     renderAll();
   });
 
+  /* ================= 数据备份 ================= */
+  function openData() {
+    els.exportBox.value = '';
+    els.importBox.value = '';
+    els.dataOverlay.classList.add('open');
+    els.dataOverlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('lock');
+  }
+  function closeData() {
+    els.dataOverlay.classList.remove('open');
+    els.dataOverlay.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('lock');
+  }
+  els.dataBtn.addEventListener('click', openData);
+  els.closeData.addEventListener('click', closeData);
+  els.dataOverlay.addEventListener('click', function (e) {
+    if (e.target === els.dataOverlay) closeData();
+  });
+  els.exportGen.addEventListener('click', function () {
+    els.exportBox.value = JSON.stringify(state);
+    toast('已生成，点「复制」带走数据');
+  });
+  els.exportCopy.addEventListener('click', function () {
+    if (!els.exportBox.value) els.exportBox.value = JSON.stringify(state);
+    const text = els.exportBox.value;
+    function done() { toast('已复制，去另一台设备粘贴导入'); }
+    function fallbackCopy() {
+      els.exportBox.focus();
+      els.exportBox.select();
+      try { document.execCommand('copy'); done(); }
+      catch (e) { toast('复制失败，请长按文本全选复制'); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallbackCopy);
+    } else fallbackCopy();
+  });
+  els.importBtn.addEventListener('click', function () {
+    const text = els.importBox.value.trim();
+    if (!text) { toast('请先粘贴导出的文本'); return; }
+    let parsed;
+    try { parsed = JSON.parse(text); } catch (e) { toast('文本格式不对，导入失败'); return; }
+    if (!parsed || !Array.isArray(parsed.records)) { toast('这不是记账本的备份数据'); return; }
+    if (state.records.length && !confirm('导入会覆盖当前设备上的全部数据，确定继续吗？')) return;
+    try { localStorage.setItem(STORE_KEY, text); } catch (e) { toast('保存失败：浏览器存储空间不足'); return; }
+    state = { records: [], budgets: {}, meta: {}, accounts: { wechat: 0, card: 0 } };
+    load();
+    save();
+    closeData();
+    renderAll();
+    toast('导入成功，共 ' + state.records.length + ' 条记录');
+  });
+
   els.calGrid.addEventListener('click', function (e) {
     const btn = e.target.closest('.day');
     if (!btn) return;
@@ -1296,6 +1388,7 @@
     }
     if (els.budgetOverlay.classList.contains('open') && e.key === 'Escape') closeBudget();
     if (els.accountOverlay.classList.contains('open') && e.key === 'Escape') closeAccount();
+    if (els.dataOverlay.classList.contains('open') && e.key === 'Escape') closeData();
   });
 
   /* ================= 启动 ================= */
