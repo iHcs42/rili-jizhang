@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>ledger · 日历记账本</title>
+<style>
+  :root{
+    --bg:#FAF6F0;
+    --card:#FFFDF9;
+    --ink:#3B3833;
+    --ink-soft:#5C574F;
+    --muted:#9E978C;
+    --faint:#BDB5A9;
+    --line:#EEE7DC;
+    --rose:#E7B7B1;
+    --rose-soft:#F9EAE6;
+    --rose-deep:#BE7E74;
+    --sage:#6F8B72;
+    --shadow:0 16px 44px rgba(122,103,83,.07);
+    --radius:26px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{min-height:100%}
+  body{
+    background:
+      radial-gradient(900px 520px at 4% -6%, rgba(240,207,203,.38), transparent 62%),
+      radial-gradient(820px 480px at 102% -2%, rgba(199,217,224,.34), transparent 64%),
+      var(--bg);
+    background-attachment:fixed;
+    color:var(--ink);
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button,input{font-family:inherit}
+  button{color:inherit}
+  ::selection{background:#F3DCD7}
+
+  .wrap{max-width:1120px;margin:0 auto;padding:30px 24px 46px}
+
+  /* ---------- 顶部 ---------- */
+  .top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:0 4px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand-mark{width:9px;height:9px;border-radius:50%;background:linear-gradient(135deg,#E7B7B1,#D79A92);box-shadow:0 0 0 3px rgba(231,183,177,.18)}
+  .brand-en{font-family:Georgia,"Times New Roman",serif;font-style:italic;font-size:23px;letter-spacing:.5px;line-height:1;color:var(--ink)}
+  .brand-cn{font-size:10.5px;letter-spacing:3.5px;color:var(--muted);margin-top:5px}
+  .ghost-btn{border:1px solid var(--line);background:rgba(255,253,249,.7);color:var(--ink-soft);font-size:11.5px;letter-spacing:1px;padding:9px 14px;border-radius:12px;cursor:pointer;transition:.18s;backdrop-filter:blur(6px)}
+  .ghost-btn:hover{border-color:#E2CFC8;color:var(--ink)}
+
+  /* ---------- 布局 ---------- */
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 348px;gap:18px;margin-top:20px;align-items:start}
+  .col{display:flex;flex-direction:column;gap:18px;min-width:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+
+  /* ---------- 月度概览 ---------- */
+  .summary{padding:20px 22px 18px}
+  .month-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .month-title{font-size:20px;font-weight:600;letter-spacing:.4px;line-height:1.2}
+  .month-en{font-size:9.5px;letter-spacing:3px;color:var(--faint);margin-top:6px}
+  .month-nav{display:flex;gap:5px}
+  .month-nav button{width:31px;height:31px;border-radius:10px;border:1px solid var(--line);background:#FCF8F1;color:var(--ink-soft);font-size:14px;line-height:1;cursor:pointer;transition:.16s}
+  .month-nav button:hover{background:#F5EDE2;border-color:#E7D8CA}
+  .month-nav button:active{transform:scale(.95)}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
+  .stat .k{font-size:9.5px;letter-spacing:2px;color:var(--muted);white-space:nowrap}
+  .stat .k em{font-style:normal;font-size:9px;color:var(--faint);letter-spacing:1px}
+  .stat .v{font-size:clamp(17px,4.6vw,23px);font-weight:600;letter-spacing:-.4px;margin-top:6px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .stat .v.neg{color:var(--rose-deep)}
+
+  .accounts{display:flex;align-items:center;gap:10px;margin-top:14px;padding:10px 13px;border-radius:13px;border:1px solid #F0E7DA;background:#FCF8F1}
+  .account{display:flex;align-items:center;gap:6px;flex:1;min-width:0;font-size:10.5px;letter-spacing:.5px;color:var(--muted)}
+  .account b{font-size:12.5px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .acc-dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto}
+  .acc-dot.wx{background:#9FC3A6}
+  .acc-dot.card{background:#E1BC8B}
+  .acc-edit{flex:0 0 auto;border:none;background:none;padding:0;font-size:10px;letter-spacing:.5px;color:var(--rose-deep);cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(190,126,116,.4)}
+
+  .budget{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
+  .budget-top{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:10.5px;letter-spacing:1.4px;color:var(--muted)}
+  .budget-top .k em{font-style:normal;color:var(--faint);letter-spacing:1px}
+  .budget-right{display:flex;align-items:center;gap:8px;min-width:0}
+  .budget-right .val{font-size:11px;letter-spacing:0;color:var(--ink-soft);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .budget-right .val.over{color:var(--rose-deep)}
+  .budget-right .link{flex:0 0 auto;border:none;background:none;color:var(--rose-deep);font-size:10.5px;letter-spacing:.5px;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(190,126,116,.4)}
+  .bar{height:5px;border-radius:99px;background:#F2EBE0;margin-top:9px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#EDCEC8,#D89C93);transition:width .45s cubic-bezier(.3,.9,.3,1)}
+  .bar.over i{background:linear-gradient(90deg,#DFA79D,#C0786D)}
+  .budget-note{font-size:10.5px;color:var(--rose-deep);margin-top:8px;line-height:1.7;letter-spacing:.2px}
+
+  /* ---------- 日历 ---------- */
+  .cal{padding:16px 16px 12px}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 6px 11px}
+  .cal-head .cap{font-size:9.5px;letter-spacing:2.6px;color:var(--faint)}
+  .cal-head .legend{font-size:10px;letter-spacing:.6px;color:var(--muted)}
+  .week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:0 0 7px}
+  .week span{text-align:center;font-size:10px;letter-spacing:1.5px;color:var(--muted)}
+  .week span.we{color:#C4A6A0}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .day{
+    position:relative;min-height:92px;padding:8px;border-radius:14px;
+    border:1px solid transparent;background:transparent;cursor:pointer;
+    display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;
+    text-align:left;transition:background .16s,border-color .16s,transform .12s;
+    font-family:inherit;
+  }
+  .day:hover{background:#F8F2E9}
+  .day:active{transform:scale(.985)}
+  .day .dnum{font-size:12px;line-height:1;color:var(--ink-soft);font-variant-numeric:tabular-nums;font-weight:500}
+  .day .damt{margin-top:auto;font-size:10px;letter-spacing:-.1px;color:#B57F76;font-variant-numeric:tabular-nums;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .day.out{opacity:.36}
+  .day.today{box-shadow:inset 0 0 0 1.5px #E3C4BD}
+  .day.sel{background:linear-gradient(160deg,#F9E9E4,#F4DCD6);box-shadow:0 4px 12px rgba(200,150,142,.13)}
+  .day.sel:hover{background:linear-gradient(160deg,#F9E9E4,#F4DCD6)}
+  .day.sel .dnum{color:#6B4E48;font-weight:700}
+  .day.sel .damt{color:#A5675D;font-weight:600}
+  .day.sel.today{box-shadow:inset 0 0 0 1.5px #DDB3AA}
+
+  /* ---------- 当日面板 ---------- */
+  .panel{padding:20px 18px 18px;position:sticky;top:18px}
+  .panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:0 3px}
+  .panel-date{font-size:20px;font-weight:600;letter-spacing:.3px}
+  .panel-week{font-size:10.5px;letter-spacing:2px;color:var(--muted);margin-top:6px}
+  .panel-totals{text-align:right;font-size:10px;letter-spacing:.5px;color:var(--muted);line-height:2.05;font-variant-numeric:tabular-nums;padding-top:3px;white-space:nowrap}
+  .panel-totals b{color:var(--ink-soft);font-size:11.5px;font-weight:600;margin-left:2px}
+  .panel-totals b.inc{color:var(--sage)}
+  .filters{display:flex;gap:5px;margin:14px 3px 0}
+  .filters button{height:26px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:#FDFAF5;font-size:10px;letter-spacing:.5px;color:var(--muted);cursor:pointer;transition:.15s}
+  .filters button:hover{background:#FBF4EA}
+  .filters button.on{background:#F7EAE5;border-color:#E4C3BB;color:#8F5E55}
+  .tag{display:inline-block;margin-left:5px;padding:1px 5px;border-radius:5px;font-size:9px;letter-spacing:.4px;font-weight:400;vertical-align:1px}
+  .tag.wx{background:#EAF2EC;color:#6F8B72}
+  .tag.card{background:#F9EFDA;color:#A1835A}
+  .list{margin-top:15px;padding-top:6px;border-top:1px dashed var(--line);display:flex;flex-direction:column;max-height:46vh;overflow-y:auto;overscroll-behavior:contain}
+  .list::-webkit-scrollbar{width:4px}
+  .list::-webkit-scrollbar-thumb{background:#E9DFD2;border-radius:99px}
+  .rec{display:flex;align-items:center;gap:10px;padding:9px 5px;border-radius:12px;transition:background .15s}
+  .rec:hover{background:#FBF6EE}
+  .ico{width:33px;height:33px;border-radius:11px;display:grid;place-items:center;font-size:15px;flex:0 0 auto;line-height:1}
+  .rec-main{flex:1;min-width:0}
+  .rec-name{font-size:12.5px;color:var(--ink);letter-spacing:.2px}
+  .rec-note{font-size:10.5px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rec-amt{font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .rec-amt.exp{color:#B87C72}
+  .rec-amt.inc{color:var(--sage)}
+  .rec-amt.trans{color:var(--muted);font-weight:500}
+  .rec-del{flex:0 0 auto;width:22px;height:22px;border:none;background:transparent;color:#C9BFB3;font-size:14px;line-height:1;border-radius:50%;cursor:pointer;opacity:0;transition:.15s}
+  .rec:hover .rec-del{opacity:1}
+  .rec-del:hover{background:#F6E3DE;color:#A5675D}
+  .empty{padding:30px 8px;text-align:center;color:var(--muted);font-size:11px;line-height:2;letter-spacing:.5px}
+  .empty .big{display:block;font-size:12.5px;color:var(--ink-soft);letter-spacing:1px;margin-bottom:5px}
+
+  .btn-primary{width:100%;height:45px;border:none;border-radius:14px;background:var(--ink);color:#FBF6EE;font-size:12.5px;letter-spacing:2px;cursor:pointer;margin-top:14px;transition:.18s;box-shadow:0 6px 16px rgba(59,56,51,.15)}
+  .btn-primary:hover{background:#4B4740;transform:translateY(-1px);box-shadow:0 9px 22px rgba(59,56,51,.2)}
+  .btn-primary:active{transform:translateY(0) scale(.99)}
+
+  .foot{text-align:center;font-size:10px;color:#B9B1A5;letter-spacing:1.5px;margin-top:28px}
+
+  /* ---------- 弹层 ---------- */
+  .overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(56,52,46,.28);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);opacity:0;pointer-events:none;transition:opacity .22s ease}
+  .overlay.open{opacity:1;pointer-events:auto}
+  .sheet{width:100%;max-width:440px;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;background:var(--card);border-radius:26px;padding:22px;box-shadow:0 30px 90px rgba(60,50,40,.22);transform:translateY(16px) scale(.985);transition:transform .26s cubic-bezier(.22,.9,.3,1)}
+  .overlay.open .sheet{transform:none}
+  .sheet::-webkit-scrollbar{width:4px}
+  .sheet::-webkit-scrollbar-thumb{background:#E9DFD2;border-radius:99px}
+  .sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .sheet-head h2{font-size:15.5px;font-weight:600;letter-spacing:1px}
+  .sheet-head .sub{font-size:10px;letter-spacing:1.5px;color:var(--muted);margin-top:5px}
+  .close{width:30px;height:30px;border:1px solid var(--line);background:#FCF8F1;border-radius:50%;color:var(--ink-soft);font-size:14px;line-height:1;cursor:pointer;transition:.16s}
+  .close:hover{background:#F6EDE2;border-color:#E7D8CA}
+
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#F5EFE5;border-radius:12px;padding:4px}
+  .seg button{height:34px;border:none;background:transparent;border-radius:9px;font-size:12px;letter-spacing:1px;color:var(--muted);cursor:pointer;transition:.16s}
+  .seg button.on{background:var(--card);color:var(--ink);box-shadow:0 2px 8px rgba(120,100,80,.09);font-weight:600}
+
+  .amt-display{text-align:center;padding:18px 0 12px;font-variant-numeric:tabular-nums}
+  .amt-display span{font-size:15px;color:var(--muted);margin-right:2px}
+  .amt-display b{font-size:36px;font-weight:600;letter-spacing:-1px}
+
+  .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .keys button{height:47px;border:1px solid var(--line);background:#FBF7F1;border-radius:11px;font-size:16px;color:var(--ink-soft);cursor:pointer;transition:background .12s,transform .1s;user-select:none}
+  .keys button:hover{background:#F6EFE4}
+  .keys button:active{background:#EFE6D9;transform:scale(.97)}
+  .keys button.del{font-size:13px;color:var(--muted)}
+
+  .field-label{font-size:9.5px;letter-spacing:2.5px;color:var(--muted);margin:16px 0 8px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{display:flex;align-items:center;gap:5px;height:31px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:#FDFAF5;font-size:11px;letter-spacing:.3px;color:var(--ink-soft);cursor:pointer;transition:.15s}
+  .chip:hover{background:#FBF4EA}
+  .chip.on{background:var(--rose-soft);border-color:#E3BFB7;color:var(--ink);box-shadow:0 2px 8px rgba(200,150,142,.1)}
+  .transfer{display:none;margin-top:14px;padding:13px 14px;border-radius:13px;border:1px dashed #E5D5C7;background:#FCF7F0}
+  .transfer.show{display:block}
+  .transfer-line{display:flex;align-items:center;gap:9px}
+  .tacc{display:inline-flex;align-items:center;height:29px;padding:0 11px;border-radius:9px;background:#FFFDF9;border:1px solid var(--line);font-size:11.5px;color:var(--ink-soft)}
+  .tacc.to{border-color:#E6D2B8;background:#FCF5E9;color:#97764A}
+  .tarrow{font-size:13px;color:var(--rose-deep)}
+  .swap{margin-left:auto;height:29px;padding:0 9px;border-radius:9px;border:1px solid var(--line);background:#FCF8F1;color:var(--muted);font-size:12px;cursor:pointer;transition:.15s}
+  .swap:hover{background:#F6EDE2;color:var(--ink-soft)}
+  .transfer-hint{font-size:9.5px;color:var(--muted);letter-spacing:.4px;margin-top:9px;line-height:1.6}
+  .chip em{font-style:normal;font-size:13px;line-height:1}
+
+  .row{display:flex;gap:8px;margin-top:14px}
+  .field{flex:1;min-width:0}
+  .field span{display:block;font-size:9.5px;letter-spacing:2px;color:var(--muted);margin-bottom:6px}
+  .field input{width:100%;height:39px;border:1px solid var(--line);border-radius:10px;background:#FDFAF5;padding:0 10px;font-size:12px;color:var(--ink);outline:none;transition:border-color .16s,background .16s}
+  .field input:focus{border-color:#E3C4BD;background:#FFFDFA}
+  .field input::placeholder{color:#C4BCB0}
+  .field.note{flex:1.55}
+
+  /* 预算弹层 */
+  .bud-total{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:#FCF8F1;margin-bottom:6px}
+  .bud-total .lab{font-size:12px;letter-spacing:.5px}
+  .bud-total .lab small{display:block;font-size:9.5px;letter-spacing:1.5px;color:var(--muted);margin-top:4px}
+  .bud-total input{width:110px;height:36px;border:1px solid var(--line);border-radius:9px;background:#FFFDFA;text-align:right;padding:0 10px;font-size:14px;color:var(--ink);outline:none;font-variant-numeric:tabular-nums}
+  .bud-total input:focus{border-color:#E3C4BD}
+  .preset{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;padding:11px 14px;border-radius:13px;border:1px dashed #E8D6C9;background:#FCF5ED}
+  .preset .txt{font-size:11px;letter-spacing:.4px;color:var(--ink-soft);line-height:1.4}
+  .preset .txt small{display:block;font-size:9.5px;letter-spacing:.6px;color:var(--muted);margin-top:4px}
+  .preset button{flex:0 0 auto;height:30px;padding:0 11px;border-radius:9px;border:1px solid #E3C4BD;background:#F9EAE6;color:#A5675D;font-size:10.5px;letter-spacing:.5px;cursor:pointer;transition:.15s}
+  .preset button:hover{background:#F5DED8}
+  .bud-list{margin-top:4px}
+  .bud-row{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px dashed var(--line)}
+  .bud-row .ico{width:28px;height:28px;border-radius:9px;font-size:13px}
+  .bud-name{font-size:11.5px;flex:0 0 62px}
+  .bud-spent{font-size:10px;color:var(--muted);flex:1;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bud-row input{width:88px;height:33px;border:1px solid var(--line);border-radius:9px;background:#FDFAF5;text-align:right;padding:0 8px;font-size:11.5px;color:var(--ink);outline:none;font-variant-numeric:tabular-nums}
+  .bud-row input:focus{border-color:#E3C4BD;background:#FFFDFA}
+  .bud-row input::placeholder{color:#C9C1B5;font-size:10px}
+  .bud-hint{font-size:10px;color:var(--muted);line-height:1.7;margin-top:12px;letter-spacing:.3px}
+  .acc-form{margin-top:2px}
+  .acc-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px dashed var(--line)}
+  .acc-row .acc-dot{width:8px;height:8px}
+  .acc-row .lab{flex:1;font-size:12.5px;letter-spacing:.5px}
+  .acc-row .lab small{display:block;font-size:9px;letter-spacing:1.5px;color:var(--muted);margin-top:4px;font-weight:400}
+  .acc-row input{width:120px;height:36px;border:1px solid var(--line);border-radius:9px;background:#FDFAF5;text-align:right;padding:0 10px;font-size:13px;color:var(--ink);outline:none;font-variant-numeric:tabular-nums}
+  .acc-row input:focus{border-color:#E3C4BD;background:#FFFDFA}
+
+  /* Toast */
+  .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);z-index:80;display:flex;align-items:center;gap:14px;max-width:90vw;padding:11px 16px;border-radius:12px;background:rgba(58,56,51,.95);color:#FBF6EE;font-size:11.5px;letter-spacing:.4px;box-shadow:0 10px 30px rgba(50,40,30,.25);opacity:0;pointer-events:none;transition:.24s}
+  .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+  .toast button{border:none;background:none;color:#F0C9C2;font-size:11.5px;letter-spacing:.5px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:0;flex:0 0 auto}
+
+  body.lock{overflow:hidden}
+
+  @media (max-width:920px){
+    .layout{grid-template-columns:1fr;gap:16px}
+    .panel{position:static;padding:18px 16px 16px}
+    .list{max-height:none}
+    .rec-del{opacity:.5}
+    .wrap{padding:24px 18px 40px}
+  }
+  @media (max-width:560px){
+    .wrap{padding:18px 12px 34px}
+    .top{padding:0 4px}
+    .brand-en{font-size:21px}
+    .ghost-btn{font-size:10.5px;padding:8px 12px}
+    .layout{margin-top:16px;gap:14px}
+    .col{gap:14px}
+    .summary{padding:17px 16px 16px;border-radius:22px}
+    .month-title{font-size:18px}
+    .stats{gap:4px;margin-top:16px}
+    .stat .k{font-size:8.5px;letter-spacing:1.2px}
+    .stat .k em{display:none}
+    .stat .v{font-size:clamp(15px,4.6vw,20px);margin-top:5px}
+    .budget-top{font-size:9.5px}
+    .budget-right .val{font-size:10px}
+    .cal{padding:13px 10px 10px;border-radius:22px}
+    .week,.grid{gap:4px}
+    .day{min-height:64px;padding:5px;border-radius:10px}
+    .day .dnum{font-size:11px}
+    .day .damt{font-size:9px}
+    .cal-head{padding:2px 4px 9px}
+    .panel{border-radius:22px}
+    .panel-date{font-size:18px}
+    .overlay{align-items:flex-end;padding:0}
+    .sheet{max-width:100%;max-height:93vh;border-radius:24px 24px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom))}
+    .keys button{height:44px}
+    .row{flex-direction:column}
+    .field.note{flex:1}
+    .amt-display b{font-size:33px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <div>
+        <div class="brand-en">ledger</div>
+        <div class="brand-cn">日历记账本</div>
+      </div>
+    </div>
+    <button class="ghost-btn" id="todayBtn">回到今天</button>
+  </header>
+
+  <div class="layout">
+    <div class="col">
+      <section class="card summary">
+        <div class="month-row">
+          <div>
+            <div class="month-title" id="monthTitle">2026年11月</div>
+            <div class="month-en" id="monthEn">NOVEMBER 2026</div>
+          </div>
+          <div class="month-nav">
+            <button id="prevBtn" aria-label="上个月">‹</button>
+            <button id="nextBtn" aria-label="下个月">›</button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="k">支出 <em>SPENT</em></div>
+            <div class="v" id="spentVal">¥0</div>
+          </div>
+          <div class="stat">
+            <div class="k">收入 <em>INCOME</em></div>
+            <div class="v" id="incomeVal">¥0</div>
+          </div>
+          <div class="stat">
+            <div class="k">结余 <em>LEFT</em></div>
+            <div class="v" id="balanceVal">¥0</div>
+          </div>
+        </div>
+
+        <div class="accounts">
+          <div class="account"><span class="acc-dot wx"></span>微信 <b id="wechatBal">¥0</b></div>
+          <div class="account"><span class="acc-dot card"></span>饭卡 <b id="cardBal">¥0</b></div>
+          <button class="acc-edit" id="accountBtn">设置余额</button>
+        </div>
+
+        <div class="budget">
+          <div class="budget-top">
+            <span class="k">本月预算 <em>BUDGET</em></span>
+            <div class="budget-right">
+              <span class="val" id="budgetVal">未设置</span>
+              <button class="link" id="budgetBtn">设置</button>
+            </div>
+          </div>
+          <div class="bar" id="budgetBar"><i id="budgetFill"></i></div>
+          <div class="budget-note" id="budgetNote" hidden></div>
+        </div>
+      </section>
+
+      <section class="card cal">
+        <div class="cal-head">
+          <span class="cap">MONTHLY VIEW</span>
+          <span class="legend">格内为当日支出</span>
+        </div>
+        <div class="week">
+          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span class="we">六</span><span class="we">日</span>
+        </div>
+        <div class="grid" id="calGrid"></div>
+      </section>
+    </div>
+
+    <aside class="card panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-date" id="dayTitle">11月2日</div>
+          <div class="panel-week" id="dayWeek">星期一</div>
+        </div>
+        <div class="panel-totals">
+          <div>支出 <b id="dayExp">¥0</b></div>
+          <div>收入 <b class="inc" id="dayInc">¥0</b></div>
+        </div>
+      </div>
+      <div class="filters" id="dayFilters">
+        <button type="button" data-filter="all" class="on">全部</button>
+        <button type="button" data-filter="wechat">微信</button>
+        <button type="button" data-filter="card">饭卡</button>
+      </div>
+      <div class="list" id="recList"></div>
+      <button class="btn-primary" id="addBtn">＋ 记一笔</button>
+    </aside>
+  </div>
+
+  <div class="foot">DATA STAYS WITH YOU · 数据只保存在本机浏览器</div>
+</div>
+
+<!-- 记一笔 -->
+<div class="overlay" id="addOverlay" aria-hidden="true">
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="记一笔">
+    <div class="sheet-head">
+      <div>
+        <h2>记一笔</h2>
+        <div class="sub" id="addSub">2026 / 11 / 02</div>
+      </div>
+      <button class="close" id="closeAdd" aria-label="关闭">×</button>
+    </div>
+
+    <div class="seg">
+      <button data-type="expense" class="on">支出</button>
+      <button data-type="income">收入</button>
+      <button data-type="transfer">转账</button>
+    </div>
+
+    <div class="amt-display"><span>¥</span><b id="amtText">0</b></div>
+
+    <div class="keys" id="keypad">
+      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+      <button data-k=".">.</button><button data-k="0">0</button><button data-k="del" class="del">⌫</button>
+    </div>
+
+    <div id="catBlock">
+      <div class="field-label">分类</div>
+      <div class="chips" id="catChips"></div>
+      <div class="field-label">账户</div>
+      <div class="chips" id="accountChips"></div>
+    </div>
+
+    <div class="transfer" id="transferBlock">
+      <div class="transfer-line">
+        <span class="tacc" id="fromAcc">微信</span>
+        <span class="tarrow">→</span>
+        <span class="tacc to" id="toAcc">饭卡</span>
+        <button type="button" class="swap" id="swapBtn">⇄ 换向</button>
+      </div>
+      <div class="transfer-hint">充值不计入支出和收入，只调整两个账户的余额</div>
+    </div>
+
+    <div class="row">
+      <label class="field note">
+        <span>备注</span>
+        <input type="text" id="noteInput" maxlength="24" placeholder="写点什么…" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>日期</span>
+        <input type="date" id="dateInput">
+      </label>
+    </div>
+
+    <button class="btn-primary" id="saveBtn">保存这笔</button>
+  </div>
+</div>
+
+<!-- 预算设置 -->
+<div class="overlay" id="budgetOverlay" aria-hidden="true">
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="预算设置">
+    <div class="sheet-head">
+      <div>
+        <h2>预算设置</h2>
+        <div class="sub" id="budgetMonth">2026年11月 · 仅当月生效</div>
+      </div>
+      <button class="close" id="closeBudget" aria-label="关闭">×</button>
+    </div>
+
+    <div class="bud-total">
+      <div class="lab">月度总预算<small>TOTAL BUDGET</small></div>
+      <input type="number" id="budgetTotal" min="0" step="1" inputmode="decimal" placeholder="不限">
+    </div>
+
+    <div class="preset">
+      <div class="txt">我的月度方案<small>固定 1779 · 生活 1800 · 结余 2021</small></div>
+      <button type="button" id="presetBtn">一键填入</button>
+    </div>
+
+    <div class="field-label">分类预算 · 可选</div>
+    <div class="bud-list" id="budgetList"></div>
+    <div class="bud-hint">留空表示不限额。房租、网费、水电记在「居家」但不设分类预算；弹性分类用到 80% 时会在概览里轻提醒。</div>
+
+    <button class="btn-primary" id="budgetSave">保存预算</button>
+  </div>
+</div>
+
+<!-- 账户余额 -->
+<div class="overlay" id="accountOverlay" aria-hidden="true">
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="账户余额">
+    <div class="sheet-head">
+      <div>
+        <h2>账户余额</h2>
+        <div class="sub">填此刻的实际余额</div>
+      </div>
+      <button class="close" id="closeAccount" aria-label="关闭">×</button>
+    </div>
+
+    <div class="acc-form">
+      <div class="acc-row">
+        <span class="acc-dot wx"></span>
+        <div class="lab">微信钱包<small>WECHAT</small></div>
+        <input type="number" id="wechatInput" min="0" step="0.01" inputmode="decimal" placeholder="0">
+      </div>
+      <div class="acc-row">
+        <span class="acc-dot card"></span>
+        <div class="lab">饭卡<small>MEAL CARD</small></div>
+        <input type="number" id="cardInput" min="0" step="0.01" inputmode="decimal" placeholder="0">
+      </div>
+    </div>
+
+    <div class="bud-hint">改「饭卡」时，「微信」会自动反向增减（饭卡 +800，微信就 −800，充值不计支出）。两边也都能单独修改。</div>
+
+    <button class="btn-primary" id="accountSave">保存余额</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 数据 ================= */
+  const STORE_KEY = 'ins.calendar.ledger.v1';
+
+  const EXPENSE_CATS = [
+    { id: 'food',    name: '餐饮', icon: '🍜', tint: '#F7E2DD', ink: '#B87C72' },
+    { id: 'traffic', name: '交通', icon: '🚌', tint: '#E3EDF1', ink: '#7E97A3' },
+    { id: 'shop',    name: '购物', icon: '🛍️', tint: '#F8EED2', ink: '#B39A63' },
+    { id: 'home',    name: '居家', icon: '🏠', tint: '#E3EDDD', ink: '#7C9479' },
+    { id: 'fun',     name: '娱乐', icon: '🎬', tint: '#E8E1F0', ink: '#8E82A3' },
+    { id: 'med',     name: '医疗', icon: '🩺', tint: '#DDEDEA', ink: '#6F918B' },
+    { id: 'study',   name: '学习', icon: '📚', tint: '#F3EAD9', ink: '#A38C63' },
+    { id: 'other',   name: '其他', icon: '✨', tint: '#ECE8E1', ink: '#8C857B' }
+  ];
+  const INCOME_CATS = [
+    { id: 'salary',   name: '工资', icon: '💼', tint: '#E3EDF1', ink: '#7E97A3' },
+    { id: 'parttime', name: '兼职', icon: '💻', tint: '#E8E1F0', ink: '#8E82A3' },
+    { id: 'gift',     name: '红包', icon: '🧧', tint: '#F7E2DD', ink: '#B87C72' },
+    { id: 'incother', name: '其他', icon: '✨', tint: '#E3EDDD', ink: '#7C9479' }
+  ];
+  const ALL_CATS = EXPENSE_CATS.concat(INCOME_CATS);
+  const CAT_MAP = ALL_CATS.reduce(function (map, c) { map[c.id] = c; return map; }, {});
+  const UNKNOWN_CAT = { id: 'unknown', name: '未分类', icon: '✨', tint: '#ECE8E1', ink: '#8C857B' };
+
+  // 生活费方案：收入 5600，固定 1779，弹性生活 1800，月结余 2021
+  const PLAN = {
+    total: 3600,
+    categories: { food: 900, traffic: 150, shop: 250, fun: 150, med: 100, study: 100, other: 150 }
+  };
+
+  const ACCOUNTS = {
+    wechat: { name: '微信', icon: '💬' },
+    card: { name: '饭卡', icon: '🍚' }
+  };
+
+  const MONTHS_EN = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+  const WEEK_CN = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function keyOf(y, m, d) { return y + '-' + pad(m + 1) + '-' + pad(d); }
+  function parseKey(k) {
+    const p = String(k).split('-').map(Number);
+    return new Date(p[0], p[1] - 1, p[2]);
+  }
+  function monthKey(y, m) { return y + '-' + pad(m + 1); }
+  function uid() { return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function catOf(id) { return CAT_MAP[id] || UNKNOWN_CAT; }
+  function sum(list, type) {
+    return list.reduce(function (s, r) { return r.type === type ? s + Number(r.amount || 0) : s; }, 0);
+  }
+  function num(n) {
+    return Number(n).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+  }
+  function money(n) {
+    const v = Number(n) || 0;
+    if (v === 0) return '¥0';
+    return (v < 0 ? '−¥' : '¥') + num(Math.abs(v));
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  /* ================= 状态 ================= */
+  const now = new Date();
+  const TODAY = keyOf(now.getFullYear(), now.getMonth(), now.getDate());
+
+  let state = { records: [], budgets: {}, meta: {}, accounts: { wechat: 0, card: 0 } };
+  let view = new Date(now.getFullYear(), now.getMonth(), 1);
+  let selected = TODAY;
+  let dayFilter = 'all';
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.records)) {
+        state.records = parsed.records.filter(function (r) {
+          return r && typeof r.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && isFinite(Number(r.amount)) && Number(r.amount) > 0;
+        }).map(function (r) {
+          const type = r.type === 'income' || r.type === 'transfer' ? r.type : 'expense';
+          return {
+            id: r.id || uid(),
+            type: type,
+            amount: Math.round(Number(r.amount) * 100) / 100,
+            cat: type === 'transfer' ? '' : (r.cat || (type === 'income' ? 'incother' : 'other')),
+            account: r.account === 'card' ? 'card' : 'wechat',
+            from: r.from === 'card' ? 'card' : 'wechat',
+            to: r.to === 'wechat' ? 'wechat' : 'card',
+            note: typeof r.note === 'string' ? r.note.slice(0, 24) : '',
+            date: r.date,
+            createdAt: Number(r.createdAt) || Date.now()
+          };
+        });
+      }
+      if (parsed && parsed.budgets && typeof parsed.budgets === 'object') {
+        state.budgets = parsed.budgets;
+      }
+      if (parsed && parsed.meta && typeof parsed.meta === 'object') {
+        state.meta = parsed.meta;
+      }
+      if (parsed && parsed.accounts && typeof parsed.accounts === 'object') {
+        state.accounts = {
+          wechat: Number(parsed.accounts.wechat) || 0,
+          card: Number(parsed.accounts.card) || 0
+        };
+      }
+    } catch (e) { /* 损坏数据则从空白开始 */ }
+  }
+  function save() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    } catch (e) {
+      toast('保存失败：浏览器存储空间不足');
+    }
+  }
+  load();
+
+  // 首次打开时把生活费方案预置到当月；之后每月可用「一键填入」
+  function seedPlanOnce() {
+    if (state.meta && state.meta.planSeeded) return;
+    const key = monthKey(now.getFullYear(), now.getMonth());
+    if (!state.budgets[key]) {
+      state.budgets[key] = { total: PLAN.total, categories: Object.assign({}, PLAN.categories) };
+    }
+    state.meta = state.meta || {};
+    state.meta.planSeeded = true;
+    save();
+  }
+
+  /* ================= 元素 ================= */
+  const $ = function (id) { return document.getElementById(id); };
+  const els = {
+    monthTitle: $('monthTitle'), monthEn: $('monthEn'),
+    spent: $('spentVal'), income: $('incomeVal'), balance: $('balanceVal'),
+    wechatBal: $('wechatBal'), cardBal: $('cardBal'), accountBtn: $('accountBtn'),
+    budgetVal: $('budgetVal'), budgetBtn: $('budgetBtn'), budgetBar: $('budgetBar'),
+    budgetFill: $('budgetFill'), budgetNote: $('budgetNote'),
+    calGrid: $('calGrid'),
+    dayTitle: $('dayTitle'), dayWeek: $('dayWeek'), dayExp: $('dayExp'), dayInc: $('dayInc'),
+    recList: $('recList'), addBtn: $('addBtn'), dayFilters: $('dayFilters'),
+    addOverlay: $('addOverlay'), addSub: $('addSub'), amtText: $('amtText'),
+    catChips: $('catChips'), noteInput: $('noteInput'), dateInput: $('dateInput'),
+    catBlock: $('catBlock'), accountChips: $('accountChips'),
+    transferBlock: $('transferBlock'), fromAcc: $('fromAcc'), toAcc: $('toAcc'), swapBtn: $('swapBtn'),
+    keypad: $('keypad'), saveBtn: $('saveBtn'), closeAdd: $('closeAdd'),
+    budgetOverlay: $('budgetOverlay'), budgetMonth: $('budgetMonth'),
+    budgetTotal: $('budgetTotal'), budgetList: $('budgetList'),
+    budgetSave: $('budgetSave'), closeBudget: $('closeBudget'), presetBtn: $('presetBtn'),
+    accountOverlay: $('accountOverlay'), wechatInput: $('wechatInput'), cardInput: $('cardInput'),
+    accountSave: $('accountSave'), closeAccount: $('closeAccount'),
+    toast: $('toast')
+  };
+
+  /* ================= 渲染：月度概览 ================= */
+  function recordsOfMonth(y, m) {
+    const key = monthKey(y, m);
+    return state.records.filter(function (r) { return r.date.slice(0, 7) === key; });
+  }
+
+  function accountNet(acc) {
+    let net = 0;
+    state.records.forEach(function (r) {
+      if (r.type === 'income' && r.account === acc) net += r.amount;
+      else if (r.type === 'expense' && r.account === acc) net -= r.amount;
+      else if (r.type === 'transfer') {
+        if (r.to === acc) net += r.amount;
+        if (r.from === acc) net -= r.amount;
+      }
+    });
+    return net;
+  }
+
+  function accountBalance(acc) {
+    return (Number(state.accounts[acc]) || 0) + accountNet(acc);
+  }
+
+  function renderSummary() {
+    const y = view.getFullYear();
+    const m = view.getMonth();
+    els.monthTitle.textContent = y + '年' + (m + 1) + '月';
+    els.monthEn.textContent = MONTHS_EN[m] + ' ' + y;
+
+    const list = recordsOfMonth(y, m);
+    const expense = sum(list, 'expense');
+    const income = sum(list, 'income');
+    const balance = income - expense;
+
+    els.spent.textContent = money(expense);
+    els.income.textContent = money(income);
+    els.balance.textContent = money(balance);
+    els.balance.classList.toggle('neg', balance < 0);
+    els.wechatBal.textContent = money(accountBalance('wechat'));
+    els.cardBal.textContent = money(accountBalance('card'));
+
+    const budget = state.budgets[monthKey(y, m)] || null;
+    const total = budget && Number(budget.total) > 0 ? Number(budget.total) : 0;
+
+    if (total > 0) {
+      const pct = Math.round((expense / total) * 100);
+      const over = expense > total;
+      els.budgetVal.textContent = money(expense) + ' / ' + money(total) + ' · ' + pct + '%';
+      els.budgetVal.classList.toggle('over', over);
+      els.budgetFill.style.width = Math.min(100, (expense / total) * 100) + '%';
+      els.budgetBar.classList.toggle('over', over);
+    } else {
+      els.budgetVal.textContent = '未设置';
+      els.budgetVal.classList.remove('over');
+      els.budgetFill.style.width = '0%';
+      els.budgetBar.classList.remove('over');
+    }
+
+    const notes = [];
+    if (total > 0 && expense > total) {
+      notes.push('本月总预算已超支 ' + money(expense - total));
+    }
+    if (budget && budget.categories) {
+      const spentByCat = {};
+      list.forEach(function (r) {
+        if (r.type === 'expense') spentByCat[r.cat] = (spentByCat[r.cat] || 0) + Number(r.amount);
+      });
+      let shown = 0;
+      EXPENSE_CATS.forEach(function (c) {
+        const limit = Number(budget.categories[c.id] || 0);
+        if (limit <= 0) return;
+        const used = spentByCat[c.id] || 0;
+        if (used < limit * 0.8) return;
+        if (shown >= 2) return;
+        if (used > limit) {
+          notes.push(c.name + '已超支 ' + money(used - limit));
+        } else if (used === limit) {
+          notes.push(c.name + '已达上限');
+        } else {
+          notes.push(c.name + '已用 ' + Math.round((used / limit) * 100) + '%');
+        }
+        shown++;
+      });
+      const rest = EXPENSE_CATS.filter(function (c) {
+        const limit = Number(budget.categories[c.id] || 0);
+        return limit > 0 && (spentByCat[c.id] || 0) >= limit * 0.8;
+      }).length;
+      if (rest > shown) notes.push('等 ' + rest + ' 项接近上限');
+    }
+
+    if (notes.length) {
+      els.budgetNote.textContent = notes.join(' · ');
+      els.budgetNote.hidden = false;
+    } else {
+      els.budgetNote.textContent = '';
+      els.budgetNote.hidden = true;
+    }
+
+    els.budgetBtn.textContent = total > 0 ? '调整' : '去设置';
+  }
+
+  /* ================= 渲染：日历 ================= */
+  function renderCalendar() {
+    const y = view.getFullYear();
+    const m = view.getMonth();
+    const first = new Date(y, m, 1);
+    const offset = (first.getDay() + 6) % 7; // 周一开头
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const daysInPrev = new Date(y, m, 0).getDate();
+    const totalCells = Math.ceil((offset + daysInMonth) / 7) * 7;
+
+    const expenseByDay = {};
+    recordsOfMonth(y, m).forEach(function (r) {
+      if (r.type === 'expense') expenseByDay[r.date] = (expenseByDay[r.date] || 0) + Number(r.amount);
+    });
+
+    let html = '';
+    for (let i = 0; i < totalCells; i++) {
+      let d, cy = y, cm = m, out = false;
+      if (i < offset) {
+        d = daysInPrev - offset + 1 + i;
+        cm = m - 1;
+        if (cm < 0) { cm = 11; cy = y - 1; }
+        out = true;
+      } else if (i < offset + daysInMonth) {
+        d = i - offset + 1;
+      } else {
+        d = i - offset - daysInMonth + 1;
+        cm = m + 1;
+        if (cm > 11) { cm = 0; cy = y + 1; }
+        out = true;
+      }
+      const k = keyOf(cy, cm, d);
+      const amt = out ? 0 : (expenseByDay[k] || 0);
+      const classes = ['day'];
+      if (out) classes.push('out');
+      if (k === TODAY) classes.push('today');
+      if (k === selected) classes.push('sel');
+      html += '<button type="button" class="' + classes.join(' ') + '" data-date="' + k + '">' +
+        '<span class="dnum">' + d + '</span>' +
+        (amt ? '<span class="damt">¥' + num(amt) + '</span>' : '') +
+      '</button>';
+    }
+    els.calGrid.innerHTML = html;
+  }
+
+  /* ================= 渲染：当日明细 ================= */
+  function renderDay() {
+    const d = parseKey(selected);
+    const all = state.records.filter(function (r) { return r.date === selected; })
+      .sort(function (a, b) { return a.createdAt - b.createdAt; });
+
+    let list = all;
+    if (dayFilter !== 'all') {
+      list = all.filter(function (r) {
+        return r.type === 'transfer'
+          ? (r.from === dayFilter || r.to === dayFilter)
+          : r.account === dayFilter;
+      });
+    }
+
+    const dayExp = sum(list, 'expense');
+    const dayInc = sum(list, 'income');
+
+    els.dayFilters.querySelectorAll('button').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-filter') === dayFilter);
+    });
+
+    els.dayTitle.textContent = (d.getMonth() + 1) + '月' + d.getDate() + '日';
+    let week = WEEK_CN[d.getDay()];
+    if (d.getFullYear() !== now.getFullYear()) week = d.getFullYear() + '年 · ' + week;
+    els.dayWeek.textContent = week;
+    els.dayExp.textContent = money(dayExp);
+    els.dayInc.textContent = money(dayInc);
+
+    if (!list.length) {
+      const big = dayFilter === 'all'
+        ? '这天还很安静'
+        : '这天没有' + ACCOUNTS[dayFilter].name + '的记录';
+      els.recList.innerHTML = '<div class="empty"><span class="big">' + big + '</span>点下方按钮，记下第一笔</div>';
+      return;
+    }
+
+    els.recList.innerHTML = list.map(function (r) {
+      if (r.type === 'transfer') {
+        const from = ACCOUNTS[r.from] || ACCOUNTS.wechat;
+        const to = ACCOUNTS[r.to] || ACCOUNTS.card;
+        return '<div class="rec">' +
+          '<span class="ico" style="background:#EAF1F4;color:#7E97A3">⇄</span>' +
+          '<div class="rec-main">' +
+            '<div class="rec-name">' + (r.to === 'card' ? '充值饭卡' : '转回微信') + '</div>' +
+            '<div class="rec-note">' + from.name + ' → ' + to.name + (r.note ? ' · ' + esc(r.note) : '') + '</div>' +
+          '</div>' +
+          '<span class="rec-amt trans">¥' + num(r.amount) + '</span>' +
+          '<button class="rec-del" data-del="' + r.id + '" aria-label="删除这笔">×</button>' +
+        '</div>';
+      }
+      const c = catOf(r.cat);
+      const acc = r.account === 'card' ? 'card' : 'wechat';
+      return '<div class="rec">' +
+        '<span class="ico" style="background:' + c.tint + ';color:' + c.ink + '">' + c.icon + '</span>' +
+        '<div class="rec-main">' +
+          '<div class="rec-name">' + c.name + '<span class="tag ' + acc + '">' + ACCOUNTS[acc].name + '</span></div>' +
+          (r.note ? '<div class="rec-note">' + esc(r.note) + '</div>' : '') +
+        '</div>' +
+        '<span class="rec-amt ' + (r.type === 'income' ? 'inc' : 'exp') + '">' +
+          (r.type === 'income' ? '+' : '−') + '¥' + num(r.amount) +
+        '</span>' +
+        '<button class="rec-del" data-del="' + r.id + '" aria-label="删除这笔">×</button>' +
+      '</div>';
+    }).join('');
+  }
+
+  function renderAll() {
+    renderSummary();
+    renderCalendar();
+    renderDay();
+  }
+  function renderChrome() {
+    const dates = document.querySelectorAll('.day');
+    dates.forEach(function (btn) {
+      btn.classList.toggle('sel', btn.getAttribute('data-date') === selected);
+    });
+  }
+
+  /* ================= 月份切换 ================= */
+  function goMonth(delta) {
+    const y = view.getFullYear();
+    const m = view.getMonth() + delta;
+    view = new Date(y, m, 1);
+    const ny = view.getFullYear();
+    const nm = view.getMonth();
+    selected = (ny === now.getFullYear() && nm === now.getMonth())
+      ? TODAY
+      : keyOf(ny, nm, 1);
+    renderAll();
+  }
+
+  /* ================= 记一笔 ================= */
+  const draft = { type: 'expense', cat: 'food', amt: '0', account: 'wechat', from: 'wechat', to: 'card' };
+  const lastAccount = { expense: 'wechat', income: 'wechat' };
+
+  function renderSeg() {
+    document.querySelectorAll('.seg button').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-type') === draft.type);
+    });
+  }
+
+  function renderChips() {
+    const cats = draft.type === 'income' ? INCOME_CATS : EXPENSE_CATS;
+    els.catChips.innerHTML = cats.map(function (c) {
+      return '<button type="button" class="chip' + (draft.cat === c.id ? ' on' : '') + '" data-cat="' + c.id + '">' +
+        '<em>' + c.icon + '</em>' + c.name + '</button>';
+    }).join('');
+  }
+
+  function renderAccountChips() {
+    els.accountChips.innerHTML = ['wechat', 'card'].map(function (id) {
+      return '<button type="button" class="chip' + (draft.account === id ? ' on' : '') + '" data-acc="' + id + '">' +
+        '<em>' + ACCOUNTS[id].icon + '</em>' + ACCOUNTS[id].name + '</button>';
+    }).join('');
+  }
+
+  function renderTransfer() {
+    els.fromAcc.textContent = ACCOUNTS[draft.from].name;
+    els.toAcc.textContent = ACCOUNTS[draft.to].name;
+  }
+
+  function syncAddLayout() {
+    const isTransfer = draft.type === 'transfer';
+    els.catBlock.style.display = isTransfer ? 'none' : '';
+    els.transferBlock.classList.toggle('show', isTransfer);
+    if (isTransfer) renderTransfer();
+  }
+
+  function setAmt(text) {
+    draft.amt = text;
+    els.amtText.textContent = text;
+  }
+
+  function pressKey(k) {
+    if (k === 'del') {
+      setAmt(draft.amt.length > 1 ? draft.amt.slice(0, -1) : '0');
+      return;
+    }
+    if (k === '.') {
+      if (!draft.amt.includes('.')) setAmt(draft.amt + '.');
+      return;
+    }
+    if (!/^[0-9]$/.test(k)) return;
+    if (draft.amt === '0') { setAmt(k); return; }
+    const parts = draft.amt.split('.');
+    if (parts[1] !== undefined && parts[1].length >= 2) return;
+    if (draft.amt.replace('.', '').length >= 8) return;
+    setAmt(draft.amt + k);
+  }
+
+  function updateAddSub() {
+    const d = parseKey(els.dateInput.value || selected);
+    els.addSub.textContent = d.getFullYear() + ' / ' + pad(d.getMonth() + 1) + ' / ' + pad(d.getDate());
+  }
+
+  function openAdd() {
+    draft.type = 'expense';
+    draft.cat = EXPENSE_CATS[0].id;
+    draft.account = lastAccount.expense;
+    draft.from = 'wechat';
+    draft.to = 'card';
+    setAmt('0');
+    els.noteInput.value = '';
+    els.dateInput.value = selected;
+    renderSeg();
+    renderChips();
+    renderAccountChips();
+    syncAddLayout();
+    updateAddSub();
+    els.addOverlay.classList.add('open');
+    els.addOverlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('lock');
+  }
+
+  function closeAdd() {
+    els.addOverlay.classList.remove('open');
+    els.addOverlay.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('lock');
+  }
+
+  function saveRecord() {
+    const amount = Math.round((parseFloat(draft.amt) || 0) * 100) / 100;
+    if (!(amount > 0)) { toast('请输入金额'); return; }
+    if (amount > 99999999) { toast('金额有点太大了'); return; }
+
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(els.dateInput.value) ? els.dateInput.value : selected;
+    const note = els.noteInput.value.trim().slice(0, 24);
+    const record = {
+      id: uid(),
+      type: draft.type,
+      amount: amount,
+      note: note,
+      date: date,
+      createdAt: Date.now()
+    };
+
+    if (draft.type === 'transfer') {
+      if (draft.from === draft.to) { toast('两个账户不能相同'); return; }
+      record.from = draft.from;
+      record.to = draft.to;
+    } else {
+      record.cat = draft.cat;
+      record.account = draft.account;
+      lastAccount[draft.type] = draft.account;
+    }
+
+    state.records.push(record);
+    save();
+
+    const d = parseKey(date);
+    view = new Date(d.getFullYear(), d.getMonth(), 1);
+    selected = date;
+    closeAdd();
+    renderAll();
+
+    if (draft.type === 'transfer') {
+      toast('已充到' + ACCOUNTS[draft.to].name + ' ' + money(amount) + '，不计支出');
+    } else {
+      toast('已记下 ' + (draft.type === 'income' ? '收入' : '支出') + ' ' + money(amount));
+    }
+  }
+
+  /* ================= 删除 ================= */
+  function deleteRecord(id) {
+    const idx = state.records.findIndex(function (r) { return r.id === id; });
+    if (idx < 0) return;
+    const removed = state.records.splice(idx, 1)[0];
+    save();
+    renderAll();
+    toast('已删除一笔', '撤销', function () {
+      state.records.push(removed);
+      save();
+      renderAll();
+      toast('已恢复');
+    });
+  }
+
+  /* ================= 预算 ================= */
+  function openBudget() {
+    const y = view.getFullYear();
+    const m = view.getMonth();
+    els.budgetMonth.textContent = y + '年' + (m + 1) + '月 · 仅当月生效';
+
+    const b = state.budgets[monthKey(y, m)] || {};
+    els.budgetTotal.value = Number(b.total) > 0 ? b.total : '';
+
+    const spentByCat = {};
+    recordsOfMonth(y, m).forEach(function (r) {
+      if (r.type === 'expense') spentByCat[r.cat] = (spentByCat[r.cat] || 0) + Number(r.amount);
+    });
+
+    els.budgetList.innerHTML = EXPENSE_CATS.map(function (c) {
+      const lim = b.categories && Number(b.categories[c.id]) > 0 ? b.categories[c.id] : '';
+      return '<div class="bud-row">' +
+        '<span class="ico" style="background:' + c.tint + ';color:' + c.ink + '">' + c.icon + '</span>' +
+        '<span class="bud-name">' + c.name + '</span>' +
+        '<span class="bud-spent">已支出 ' + money(spentByCat[c.id] || 0) + '</span>' +
+        '<input type="number" min="0" step="1" inputmode="decimal" data-bcat="' + c.id + '" value="' + lim + '" placeholder="不限">' +
+      '</div>';
+    }).join('');
+
+    els.budgetOverlay.classList.add('open');
+    els.budgetOverlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('lock');
+  }
+
+  function closeBudget() {
+    els.budgetOverlay.classList.remove('open');
+    els.budgetOverlay.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('lock');
+  }
+
+  function applyPlan() {
+    els.budgetTotal.value = PLAN.total;
+    els.budgetList.querySelectorAll('[data-bcat]').forEach(function (input) {
+      const id = input.getAttribute('data-bcat');
+      input.value = PLAN.categories[id] != null ? PLAN.categories[id] : '';
+    });
+    toast('方案已填入，点「保存预算」生效');
+  }
+
+  function saveBudget() {
+    const y = view.getFullYear();
+    const m = view.getMonth();
+    const key = monthKey(y, m);
+    const total = Math.max(0, Math.round((parseFloat(els.budgetTotal.value) || 0) * 100) / 100);
+    const cats = {};
+    els.budgetList.querySelectorAll('[data-bcat]').forEach(function (input) {
+      const v = Math.max(0, Math.round((parseFloat(input.value) || 0) * 100) / 100);
+      if (v > 0) cats[input.getAttribute('data-bcat')] = v;
+    });
+
+    if (total <= 0 && !Object.keys(cats).length) {
+      delete state.budgets[key];
+    } else {
+      state.budgets[key] = { total: total, categories: cats };
+    }
+    save();
+    closeBudget();
+    renderAll();
+    toast('预算已保存');
+  }
+
+  /* ================= 账户余额 ================= */
+  let linkCard = 0; // 饭卡输入框上一次的值，用于联动微信
+
+  function openAccount() {
+    els.wechatInput.value = Math.round(accountBalance('wechat') * 100) / 100;
+    els.cardInput.value = Math.round(accountBalance('card') * 100) / 100;
+    linkCard = Number(els.cardInput.value) || 0;
+    els.accountOverlay.classList.add('open');
+    els.accountOverlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('lock');
+  }
+
+  function closeAccount() {
+    els.accountOverlay.classList.remove('open');
+    els.accountOverlay.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('lock');
+  }
+
+  function saveAccount() {
+    const wantWechat = Math.round((parseFloat(els.wechatInput.value) || 0) * 100) / 100;
+    const wantCard = Math.round((parseFloat(els.cardInput.value) || 0) * 100) / 100;
+    state.accounts = {
+      wechat: wantWechat - accountNet('wechat'),
+      card: wantCard - accountNet('card')
+    };
+    save();
+    closeAccount();
+    renderAll();
+    toast('账户余额已更新');
+  }
+
+  /* ================= Toast ================= */
+  let toastTimer = null;
+  function toast(msg, actionLabel, actionFn) {
+    els.toast.innerHTML = '';
+    els.toast.appendChild(document.createTextNode(msg));
+    if (actionLabel) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = actionLabel;
+      btn.addEventListener('click', function () {
+        hideToast();
+        if (actionFn) actionFn();
+      });
+      els.toast.appendChild(btn);
+    }
+    els.toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, 4200);
+  }
+  function hideToast() {
+    els.toast.classList.remove('show');
+    clearTimeout(toastTimer);
+  }
+
+  /* ================= 事件 ================= */
+  $('prevBtn').addEventListener('click', function () { goMonth(-1); });
+  $('nextBtn').addEventListener('click', function () { goMonth(1); });
+  $('todayBtn').addEventListener('click', function () {
+    view = new Date(now.getFullYear(), now.getMonth(), 1);
+    selected = TODAY;
+    renderAll();
+  });
+
+  els.calGrid.addEventListener('click', function (e) {
+    const btn = e.target.closest('.day');
+    if (!btn) return;
+    const k = btn.getAttribute('data-date');
+    const d = parseKey(k);
+    if (d.getFullYear() !== view.getFullYear() || d.getMonth() !== view.getMonth()) {
+      view = new Date(d.getFullYear(), d.getMonth(), 1);
+      selected = k;
+      renderAll();
+      return;
+    }
+    selected = k;
+    renderDay();
+    renderChrome();
+  });
+
+  els.recList.addEventListener('click', function (e) {
+    const btn = e.target.closest('[data-del]');
+    if (!btn) return;
+    deleteRecord(btn.getAttribute('data-del'));
+  });
+
+  els.addBtn.addEventListener('click', openAdd);
+  els.closeAdd.addEventListener('click', closeAdd);
+  els.addOverlay.addEventListener('click', function (e) {
+    if (e.target === els.addOverlay) closeAdd();
+  });
+
+  els.keypad.addEventListener('click', function (e) {
+    const key = e.target.closest('[data-k]');
+    if (key) pressKey(key.getAttribute('data-k'));
+  });
+
+  document.querySelectorAll('.seg button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      draft.type = btn.getAttribute('data-type');
+      if (draft.type === 'transfer') {
+        draft.from = 'wechat';
+        draft.to = 'card';
+      } else {
+        draft.cat = draft.type === 'income' ? INCOME_CATS[0].id : EXPENSE_CATS[0].id;
+        draft.account = lastAccount[draft.type];
+      }
+      renderSeg();
+      renderChips();
+      renderAccountChips();
+      syncAddLayout();
+    });
+  });
+
+  els.catChips.addEventListener('click', function (e) {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    draft.cat = chip.getAttribute('data-cat');
+    renderChips();
+  });
+
+  els.accountChips.addEventListener('click', function (e) {
+    const chip = e.target.closest('[data-acc]');
+    if (!chip) return;
+    draft.account = chip.getAttribute('data-acc');
+    renderAccountChips();
+  });
+
+  els.swapBtn.addEventListener('click', function () {
+    const from = draft.from;
+    draft.from = draft.to;
+    draft.to = from;
+    renderTransfer();
+  });
+
+  els.dayFilters.addEventListener('click', function (e) {
+    const btn = e.target.closest('[data-filter]');
+    if (!btn) return;
+    dayFilter = btn.getAttribute('data-filter');
+    renderDay();
+  });
+
+  els.dateInput.addEventListener('change', updateAddSub);
+  els.saveBtn.addEventListener('click', saveRecord);
+
+  els.budgetBtn.addEventListener('click', openBudget);
+  els.closeBudget.addEventListener('click', closeBudget);
+  els.budgetOverlay.addEventListener('click', function (e) {
+    if (e.target === els.budgetOverlay) closeBudget();
+  });
+  els.budgetSave.addEventListener('click', saveBudget);
+  els.presetBtn.addEventListener('click', applyPlan);
+
+  els.accountBtn.addEventListener('click', openAccount);
+  els.closeAccount.addEventListener('click', closeAccount);
+  els.accountOverlay.addEventListener('click', function (e) {
+    if (e.target === els.accountOverlay) closeAccount();
+  });
+  els.accountSave.addEventListener('click', saveAccount);
+
+  // 改饭卡余额时，微信余额自动反向增减（充值从微信扣）
+  els.cardInput.addEventListener('input', function () {
+    const raw = els.cardInput.value.trim();
+    const v = raw === '' ? 0 : parseFloat(raw);
+    if (!isFinite(v)) return;
+    const delta = Math.round((v - linkCard) * 100) / 100;
+    linkCard = v;
+    if (!delta) return;
+    const cur = parseFloat(els.wechatInput.value);
+    if (!isFinite(cur)) return;
+    els.wechatInput.value = Math.round((cur - delta) * 100) / 100;
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (els.addOverlay.classList.contains('open')) {
+      if (e.key === 'Escape') { closeAdd(); return; }
+      if (e.target && (e.target.tagName === 'INPUT')) {
+        if (e.key === 'Enter') { e.preventDefault(); saveRecord(); }
+        return;
+      }
+      if (/^[0-9]$/.test(e.key)) { pressKey(e.key); return; }
+      if (e.key === '.') { pressKey('.'); return; }
+      if (e.key === 'Backspace') { e.preventDefault(); pressKey('del'); return; }
+      if (e.key === 'Enter') { e.preventDefault(); saveRecord(); }
+      return;
+    }
+    if (els.budgetOverlay.classList.contains('open') && e.key === 'Escape') closeBudget();
+    if (els.accountOverlay.classList.contains('open') && e.key === 'Escape') closeAccount();
+  });
+
+  /* ================= 启动 ================= */
+  seedPlanOnce();
+  renderAll();
+})();
+</script>
+</body>
+</html>
